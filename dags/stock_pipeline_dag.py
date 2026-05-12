@@ -21,7 +21,7 @@ def fetch_stock_data(ti, **context):
     api_key = Variable.get("polygon_api_key")
     
     # Get yesterday's date
-    yesterday = (datetime.utcnow() - timedelta(days=4)).strftime('%Y-%m-%d')
+    yesterday = (datetime.utcnow() - timedelta(days=1)).strftime('%Y-%m-%d')
     
     all_stock_data = []
     
