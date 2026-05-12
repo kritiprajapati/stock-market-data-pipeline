@@ -21,7 +21,7 @@ def fetch_stock_data(ti, **context):
     api_key = Variable.get("polygon_api_key")
     
     # Get yesterday's date
-    yesterday = (datetime.utcnow() - timedelta(days=1)).strftime('%Y-%m-%d')
+    yesterday = (datetime.utcnow() - timedelta(days=4)).strftime('%Y-%m-%d')
     
     all_stock_data = []
     
@@ -87,7 +87,7 @@ with DAG(
     dag_id='stock_market_pipeline',
     default_args=default_args,
     description='Stock market data pipeline with Medallion architecture',
-    schedule='30 0 * * 2-6',
+    schedule='30 3 * * 2-6',
     start_date=datetime(2026, 5, 1),
     catchup=False,
     tags=['stock', 'finance', 'bronze']
