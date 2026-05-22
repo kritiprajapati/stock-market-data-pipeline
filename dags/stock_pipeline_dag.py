@@ -89,7 +89,8 @@ def trigger_silver_notebook(**context):
     cluster_id = Variable.get("databricks_cluster_id") 
     
     # Databricks notebook path in workspace
-    notebook_path = "/Workspace/stock-market-data-pipeline/notebooks/silver_transformation"
+    # notebook_path = "/Workspace/stock-market-data-pipeline/notebooks/silver_transformation"
+    notebook_path = "/Workspace/Users/kritiprajapati140@gmail.com/stock-market-data-pipeline/notebooks/silver_transformation"
     
     # Prepare the request
     url = f"{workspace_url}/api/2.1/jobs/runs/submit"
@@ -132,7 +133,8 @@ def trigger_gold_notebook(**context):
     pat_token = Variable.get("databricks_pat_token")
     cluster_id = Variable.get("databricks_cluster_id") 
     
-    notebook_path = "/Workspace/stock-market-data-pipeline/notebooks/gold_transformation"
+    # notebook_path = "/Workspace/stock-market-data-pipeline/notebooks/gold_transformation"
+    notebook_path = "/Workspace/Users/kritiprajapati140@gmail.com/stock-market-data-pipeline/notebooks/gold_transformation"
     
     url = f"{workspace_url}/api/2.1/jobs/runs/submit"
     
@@ -172,7 +174,8 @@ def trigger_anomaly_notebook(**context):
     pat_token = Variable.get("databricks_pat_token")
     cluster_id = Variable.get("databricks_cluster_id") 
     
-    notebook_path = "/Workspace/stock-market-data-pipeline/notebooks/anomaly_detection"
+    # notebook_path = "/Workspace/stock-market-data-pipeline/notebooks/anomaly_detection"
+    notebook_path = "/Workspace/Users/kritiprajapati140@gmail.com/stock-market-data-pipeline/notebooks/anomaly_detection"
     
     url = f"{workspace_url}/api/2.1/jobs/runs/submit"
     
