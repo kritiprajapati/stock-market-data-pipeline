@@ -206,7 +206,7 @@ def trigger_anomaly_notebook(**context):
     wait_for_job_completion(workspace_url, pat_token, run_id, timeout=7200)
 
 # ── Helper function to wait for job completion ──────────────────────────────
-def wait_for_job_completion(workspace_url, pat_token, run_id, timeout=3600):
+def wait_for_job_completion(workspace_url, pat_token, run_id, timeout=7200):
     """
     Wait for a Databricks job to complete
     timeout: maximum seconds to wait (default 1 hour)
@@ -220,7 +220,6 @@ def wait_for_job_completion(workspace_url, pat_token, run_id, timeout=3600):
     start_time = time.time()
     
     while True:
-        # Check if timeout exceeded
         if time.time() - start_time > timeout:
             raise AirflowException(f"Job {run_id} did not complete within {timeout} seconds")
         
@@ -230,13 +229,20 @@ def wait_for_job_completion(workspace_url, pat_token, run_id, timeout=3600):
         if response.status_code != 200:
             raise AirflowException(f"Failed to get job status: {response.text}")
         
-        job_status = response.json()['state']
+        run_data = response.json()
         
-        if job_status == 'TERMINATED':
-            result_state = response.json()['state_message']
-            print(f"✅ Job completed with state: {result_state}")
-            break
-        elif job_status == 'INTERNAL_ERROR':
+        life_cycle_state = run_data.get('state', {}).get('life_cycle_state', '')
+        result_state = run_data.get('state', {}).get('result_state', '')
+        
+        print(f"Job {run_id} status: {life_cycle_state} / {result_state}")
+        
+        if life_cycle_state == 'TERMINATED':
+            if result_state == 'SUCCESS':
+                print(f"✅ Job {run_id} completed successfully!")
+                break
+            else:
+                raise AirflowException(f"Job {run_id} failed with result: {result_state}")
+        elif life_cycle_state == 'INTERNAL_ERROR':
             raise AirflowException(f"Job {run_id} failed with internal error")
         
         # Wait 10 seconds before checking again
