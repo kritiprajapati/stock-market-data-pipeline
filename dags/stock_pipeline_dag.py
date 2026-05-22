@@ -253,7 +253,8 @@ with DAG(
     dag_id='stock_market_pipeline',
     default_args=default_args,
     description='Stock market data pipeline with Medallion architecture',
-    schedule='30 3 * * 2-6',  # 9AM IST Tuesday-Saturday
+    # schedule='30 3 * * 2-6',  # 9AM IST Tuesday-Saturday
+    schedule= None,
     start_date=datetime(2026, 5, 1),
     catchup=False,
     tags=['stock', 'finance', 'end-to-end']

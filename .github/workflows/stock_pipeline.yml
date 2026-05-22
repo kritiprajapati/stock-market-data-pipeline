@@ -1,0 +1,34 @@
+name: Stock Market Data Pipeline
+
+on:
+  schedule:
+    # Runs at 9AM IST (3:30 AM UTC) Tuesday to Saturday
+    - cron: '30 3 * * 2-6'
+  workflow_dispatch:  # allows manual trigger from GitHub UI
+
+jobs:
+  run_pipeline:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          pip install requests azure-storage-blob
+
+      - name: Run Pipeline
+        env:
+          POLYGON_API_KEY: ${{ secrets.POLYGON_API_KEY }}
+          AZURE_STORAGE_ACCOUNT: ${{ secrets.AZURE_STORAGE_ACCOUNT }}
+          AZURE_STORAGE_KEY: ${{ secrets.AZURE_STORAGE_KEY }}
+          DATABRICKS_WORKSPACE_URL: ${{ secrets.DATABRICKS_WORKSPACE_URL }}
+          DATABRICKS_PAT_TOKEN: ${{ secrets.DATABRICKS_PAT_TOKEN }}
+          DATABRICKS_CLUSTER_ID: ${{ secrets.DATABRICKS_CLUSTER_ID }}
+        run: python pipeline_runner.py
