@@ -5,7 +5,7 @@ import time
 from datetime import datetime, timedelta
 from azure.storage.blob import BlobServiceClient
 
-# ── Configuration from environment variables ──────────────────────────────────
+# Configuration
 POLYGON_API_KEY = os.environ.get("POLYGON_API_KEY")
 AZURE_STORAGE_ACCOUNT = os.environ.get("AZURE_STORAGE_ACCOUNT")
 AZURE_STORAGE_KEY = os.environ.get("AZURE_STORAGE_KEY")
@@ -15,7 +15,7 @@ DATABRICKS_CLUSTER_ID = os.environ.get("DATABRICKS_CLUSTER_ID")
 
 STOCKS = ['AAPL', 'GOOGL', 'MSFT', 'TSLA', 'AMZN']
 
-# ── Helper: Get last trading day ──────────────────────────────────────────────
+# Get last trading day
 def get_last_trading_day():
     today = datetime.utcnow()
     yesterday = today - timedelta(days=1)
@@ -28,7 +28,7 @@ def get_last_trading_day():
     
     return yesterday.strftime('%Y-%m-%d')
 
-# ── Step 1: Fetch stock data from Polygon.io ──────────────────────────────────
+# Fetch stock data from Polygon.io
 def fetch_stock_data(date_str):
     print(f"\n{'='*50}")
     print(f"STEP 1: Fetching stock data for {date_str}")
@@ -43,21 +43,21 @@ def fetch_stock_data(date_str):
         if response.status_code == 200:
             data = response.json()
             all_stock_data.append(data)
-            print(f"✅ Fetched {ticker}: close={data.get('close')}")
+            print(f"Fetched {ticker}: close={data.get('close')}")
         else:
-            print(f"❌ Failed {ticker}: {response.status_code} - {response.text}")
+            print(f"Failed {ticker}: {response.status_code} - {response.text}")
     
     print(f"\nTotal records fetched: {len(all_stock_data)}")
     return all_stock_data
 
-# ── Step 2: Save to Bronze ────────────────────────────────────────────────────
+# Save to Bronze
 def save_to_bronze(stock_data, date_str):
     print(f"\n{'='*50}")
     print(f"STEP 2: Saving to Bronze layer")
     print(f"{'='*50}")
     
     if not stock_data:
-        print("⚠️ No data to save - market may have been closed")
+        print("No data to save - market may have been closed")
         return False
     
     connection_string = (
@@ -78,10 +78,10 @@ def save_to_bronze(stock_data, date_str):
     )
     blob_client.upload_blob(json_data, overwrite=True)
     
-    print(f"✅ Saved {len(stock_data)} records to Bronze: {file_name}")
+    print(f"Saved {len(stock_data)} records to Bronze: {file_name}")
     return True
 
-# ── Helper: Trigger Databricks notebook ──────────────────────────────────────
+# Trigger Databricks notebook
 def trigger_databricks_notebook(notebook_path, run_name, date_str):
     headers = {
         "Authorization": f"Bearer {DATABRICKS_PAT_TOKEN}",
@@ -106,10 +106,10 @@ def trigger_databricks_notebook(notebook_path, run_name, date_str):
         raise Exception(f"Failed to trigger notebook: {response.text}")
     
     run_id = response.json()['run_id']
-    print(f"✅ Notebook triggered with run_id: {run_id}")
+    print(f"Notebook triggered with run_id: {run_id}")
     return run_id
 
-# ── Helper: Wait for Databricks job ──────────────────────────────────────────
+# Wait for Databricks job
 def wait_for_job(run_id, timeout=3600):
     headers = {
         "Authorization": f"Bearer {DATABRICKS_PAT_TOKEN}",
@@ -133,14 +133,14 @@ def wait_for_job(run_id, timeout=3600):
         
         if life_cycle_state == 'TERMINATED':
             if result_state == 'SUCCESS':
-                print(f"✅ Job {run_id} completed successfully!")
+                print(f"Job {run_id} completed successfully!")
                 return True
             else:
                 raise Exception(f"Job {run_id} failed: {result_state}")
         
         time.sleep(15)
 
-# ── Step 3: Trigger Silver notebook ──────────────────────────────────────────
+# Trigger Silver notebook
 def run_silver(date_str):
     print(f"\n{'='*50}")
     print(f"STEP 3: Running Silver transformation")
@@ -150,7 +150,7 @@ def run_silver(date_str):
     run_id = trigger_databricks_notebook(notebook_path, f"silver_{date_str}", date_str)
     wait_for_job(run_id)
 
-# ── Step 4: Trigger Gold notebook ────────────────────────────────────────────
+# Trigger Gold notebook
 def run_gold(date_str):
     print(f"\n{'='*50}")
     print(f"STEP 4: Running Gold transformation")
@@ -160,7 +160,7 @@ def run_gold(date_str):
     run_id = trigger_databricks_notebook(notebook_path, f"gold_{date_str}", date_str)
     wait_for_job(run_id)
 
-# ── Step 5: Trigger Anomaly notebook ─────────────────────────────────────────
+# Trigger Anomaly notebook 
 def run_anomaly(date_str):
     print(f"\n{'='*50}")
     print(f"STEP 5: Running Anomaly Detection")
@@ -170,7 +170,7 @@ def run_anomaly(date_str):
     run_id = trigger_databricks_notebook(notebook_path, f"anomaly_{date_str}", date_str)
     wait_for_job(run_id)
 
-# ── Main: Run full pipeline ───────────────────────────────────────────────────
+# Main: Run full pipeline
 if __name__ == "__main__":
     print("\n" + "="*50)
     print("STOCK MARKET DATA PIPELINE")
@@ -184,7 +184,7 @@ if __name__ == "__main__":
     stock_data = fetch_stock_data(date_str)
     
     if not stock_data:
-        print("⚠️ No data fetched - pipeline stopping")
+        print("No data fetched - pipeline stopping")
         exit(0)
     
     save_to_bronze(stock_data, date_str)
@@ -193,5 +193,5 @@ if __name__ == "__main__":
     run_anomaly(date_str)
     
     print("\n" + "="*50)
-    print("✅ PIPELINE COMPLETED SUCCESSFULLY!")
+    print("PIPELINE COMPLETED SUCCESSFULLY!")
     print("="*50)

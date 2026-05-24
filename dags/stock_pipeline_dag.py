@@ -8,7 +8,6 @@ import json
 from azure.storage.blob import BlobServiceClient
 import time
 
-# ── Default arguments ───────────────────────────────────────────────────────
 default_args = {
     'owner': 'kriti',
     'retries': 3,
@@ -18,15 +17,12 @@ default_args = {
 
 STOCKS = ['AAPL', 'GOOGL', 'MSFT', 'TSLA', 'AMZN']
 
-# ── Task 1: Fetch stock data from Polygon.io ────────────────────────────────
+# Fetch stock data from Polygon.io
 def fetch_stock_data(**context):
     api_key = Variable.get("polygon_api_key")
     
     execution_date = context['execution_date']
     date_str = (execution_date - timedelta(days=1)).strftime('%Y-%m-%d')
-
-    # # Get yesterday's date
-    # yesterday = (datetime.utcnow() - timedelta(days=1)).strftime('%Y-%m-%d')
     
     all_stock_data = []
     
@@ -37,21 +33,21 @@ def fetch_stock_data(**context):
         if response.status_code == 200:
             data = response.json()
             all_stock_data.append(data)
-            print(f"✅ Fetched data for {ticker}")
+            print(f"Fetched data for {ticker}")
         else:
-            print(f"❌ Failed to fetch {ticker}: {response.status_code}")
+            print(f"Failed to fetch {ticker}: {response.status_code}")
     
     context['ti'].xcom_push(key='stock_data', value=all_stock_data)
     context['ti'].xcom_push(key='fetch_date', value=date_str)
     print(f"Total records fetched: {len(all_stock_data)}")
 
-# ── Task 2: Save raw data to ADLS Bronze ────────────────────────────────────
+# Save raw data to ADLS Bronze
 def save_to_bronze(**context):
     stock_data = context['ti'].xcom_pull(key='stock_data', task_ids='fetch_stock_data')
     fetch_date = context['ti'].xcom_pull(key='fetch_date', task_ids='fetch_stock_data')
     
     if not stock_data:
-        print("⚠️ No stock data received - market may have been closed yesterday")
+        print("No stock data received - market may have been closed yesterday")
         return
     
     account_name = Variable.get("azure_storage_account")
@@ -75,21 +71,18 @@ def save_to_bronze(**context):
     )
     blob_client.upload_blob(json_data, overwrite=True)
     
-    print(f"✅ Saved {len(stock_data)} records to Bronze: {file_name}")
+    print(f"Saved {len(stock_data)} records to Bronze: {file_name}")
     
     # Push the date to next tasks
     context['ti'].xcom_push(key='processing_date', value=fetch_date)
 
-# ── Task 3: Trigger Silver transformation notebook on Databricks ───────────
+# Trigger Silver transformation notebook
 def trigger_silver_notebook(**context):
     processing_date = context['ti'].xcom_pull(key='processing_date', task_ids='save_to_bronze')
     
     workspace_url = Variable.get("databricks_workspace_url")
     pat_token = Variable.get("databricks_pat_token")
     cluster_id = Variable.get("databricks_cluster_id") 
-    
-    # Databricks notebook path in workspace
-    # notebook_path = "/Workspace/stock-market-data-pipeline/notebooks/silver_transformation"
     notebook_path = "/Workspace/Users/kritiprajapati140@gmail.com/stock-market-data-pipeline/notebooks/silver_transformation"
     
     # Prepare the request
@@ -118,22 +111,20 @@ def trigger_silver_notebook(**context):
         raise AirflowException(f"Failed to trigger Silver notebook: {response.text}")
     
     run_id = response.json()['run_id']
-    print(f"✅ Silver notebook triggered with run_id: {run_id}")
+    print(f"Silver notebook triggered with run_id: {run_id}")
     
     # Wait for job to complete
     wait_for_job_completion(workspace_url, pat_token, run_id, timeout=7200)
     
     context['ti'].xcom_push(key='processing_date', value=processing_date)
 
-# ── Task 4: Trigger Gold transformation notebook on Databricks ─────────────
+# Trigger Gold transformation notebook
 def trigger_gold_notebook(**context):
     processing_date = context['ti'].xcom_pull(key='processing_date', task_ids='trigger_silver')
     
     workspace_url = Variable.get("databricks_workspace_url")
     pat_token = Variable.get("databricks_pat_token")
     cluster_id = Variable.get("databricks_cluster_id") 
-    
-    # notebook_path = "/Workspace/stock-market-data-pipeline/notebooks/gold_transformation"
     notebook_path = "/Workspace/Users/kritiprajapati140@gmail.com/stock-market-data-pipeline/notebooks/gold_transformation"
     
     url = f"{workspace_url}/api/2.1/jobs/runs/submit"
@@ -160,21 +151,19 @@ def trigger_gold_notebook(**context):
         raise AirflowException(f"Failed to trigger Gold notebook: {response.text}")
     
     run_id = response.json()['run_id']
-    print(f"✅ Gold notebook triggered with run_id: {run_id}")
+    print(f"Gold notebook triggered with run_id: {run_id}")
     
     wait_for_job_completion(workspace_url, pat_token, run_id, timeout=7200)
     
     context['ti'].xcom_push(key='processing_date', value=processing_date)
 
-# ── Task 5: Trigger Anomaly detection notebook on Databricks ──────────────
+# Trigger Anomaly detection notebook
 def trigger_anomaly_notebook(**context):
     processing_date = context['ti'].xcom_pull(key='processing_date', task_ids='trigger_gold')
     
     workspace_url = Variable.get("databricks_workspace_url")
     pat_token = Variable.get("databricks_pat_token")
     cluster_id = Variable.get("databricks_cluster_id") 
-    
-    # notebook_path = "/Workspace/stock-market-data-pipeline/notebooks/anomaly_detection"
     notebook_path = "/Workspace/Users/kritiprajapati140@gmail.com/stock-market-data-pipeline/notebooks/anomaly_detection"
     
     url = f"{workspace_url}/api/2.1/jobs/runs/submit"
@@ -201,16 +190,12 @@ def trigger_anomaly_notebook(**context):
         raise AirflowException(f"Failed to trigger Anomaly notebook: {response.text}")
     
     run_id = response.json()['run_id']
-    print(f"✅ Anomaly notebook triggered with run_id: {run_id}")
+    print(f"Anomaly notebook triggered with run_id: {run_id}")
     
     wait_for_job_completion(workspace_url, pat_token, run_id, timeout=7200)
 
-# ── Helper function to wait for job completion ──────────────────────────────
+# Helper function to wait for Databricks job to complete
 def wait_for_job_completion(workspace_url, pat_token, run_id, timeout=7200):
-    """
-    Wait for a Databricks job to complete
-    timeout: maximum seconds to wait (default 1 hour)
-    """
     headers = {
         "Authorization": f"Bearer {pat_token}",
         "Content-Type": "application/json"
@@ -248,7 +233,7 @@ def wait_for_job_completion(workspace_url, pat_token, run_id, timeout=7200):
         # Wait 10 seconds before checking again
         time.sleep(10)
 
-# ── DAG Definition ──────────────────────────────────────────────────────────
+# DAG Definition
 with DAG(
     dag_id='stock_market_pipeline',
     default_args=default_args,
